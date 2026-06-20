@@ -244,16 +244,22 @@ const ModCard = ({ mod, lang, onDownload, dark, dlLoading }) => {
   );
 };
 
+// ─── LOCALSTORAGE YARDIMCILARI ────────────────────────────────────────────────
+const loadLS = (key, fallback) => {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+};
+const saveLS = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} };
+
 // ─── ANA UYGULAMA ─────────────────────────────────────────────────────────────
 export default function App() {
-  const [dark, setDark]           = useState(true);
-  const [lang, setLang]           = useState("tr");
+  const [dark, setDark]           = useState(() => loadLS("mpw_dark", true));
+  const [lang, setLang]           = useState(() => loadLS("mpw_lang", "tr"));
   const [page, setPage]           = useState("home");
   const [authMode, setAuthMode]   = useState("login");
   const [adminTab, setAdminTab]   = useState("upload");
-  const [users, setUsers]         = useState(INIT_USERS);
-  const [mods, setMods]           = useState(INIT_MODS);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [users, setUsers]         = useState(() => loadLS("mpw_users", INIT_USERS));
+  const [mods, setMods]           = useState(() => loadLS("mpw_mods", INIT_MODS));
+  const [currentUser, setCurrentUser] = useState(() => loadLS("mpw_session", null));
   const [toast, setToast]         = useState(null);
   const [searchQ, setSearchQ]     = useState("");
   const [filterCat, setFilterCat] = useState("all");
@@ -270,6 +276,13 @@ export default function App() {
   const emptyForm = { name:"", nametr:"", description:"", descriptiontr:"", version:"1.0.0", mcVersion:"1.20.1", forge:"47.4.10", category:"Vehicles", categorytr:"Araçlar", size:"", featured:false, fileData:null, fileName:null };
   const [uploadForm, setUploadForm] = useState(emptyForm);
   const fileRef = useRef(null);
+
+  // localStorage'a kaydet
+  useEffect(() => saveLS("mpw_dark", dark), [dark]);
+  useEffect(() => saveLS("mpw_lang", lang), [lang]);
+  useEffect(() => saveLS("mpw_users", users), [users]);
+  useEffect(() => saveLS("mpw_mods", mods), [mods]);
+  useEffect(() => saveLS("mpw_session", currentUser), [currentUser]);
 
   const t    = T[lang];
   const D    = dark;
@@ -796,3 +809,4 @@ export default function App() {
     </div>
   );
 }
+
