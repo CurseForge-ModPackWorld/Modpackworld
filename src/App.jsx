@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { db, ref, onValue, set, get } from "./firebase.js";
 
 // ─── SABIT VERİ ───────────────────────────────────────────────────────────────
 const ADMIN_EMAIL = "admin@gmail.com";
@@ -16,7 +17,7 @@ const INIT_MODS = [
     descriptiontr: "Yüzlerce gerçek dünya arabasını doğru motor özellikleri ve gerçekçi fizikle oyuna ekler.",
     version: "1.0.0", mcVersion: "1.20.1", forge: "47.4.10",
     category: "Vehicles", categorytr: "Araçlar",
-    downloads: 1420, size: "4.2 MB", uploadDate: "2024-06-01",
+    downloads: 0, size: "4.2 MB", uploadDate: "2024-06-01",
     fileData: null, fileName: null, featured: true
   }
 ];
@@ -284,6 +285,20 @@ export default function App() {
   useEffect(() => saveLS("mpw_mods", mods), [mods]);
   useEffect(() => saveLS("mpw_session", currentUser), [currentUser]);
 
+  // Firebase: indirme sayaçlarını gerçek zamanlı dinle
+  useEffect(() => {
+    const dlRef = ref(db, "downloads");
+    const unsub = onValue(dlRef, (snap) => {
+      const data = snap.val();
+      if (!data) return;
+      setMods(prev => prev.map(m => ({
+        ...m,
+        downloads: data[String(m.id)] !== undefined ? data[String(m.id)] : m.downloads
+      })));
+    });
+    return () => unsub();
+  }, []);
+
   const t    = T[lang];
   const D    = dark;
   const bg   = D?"#0f1117":"#f8fafc";
@@ -300,9 +315,17 @@ export default function App() {
     if (dlLoading) return;
     setDlLoading(mod.id);
 
-    setTimeout(() => {
-      // Sayacı artır
-      setMods(prev => prev.map(m => m.id === mod.id ? { ...m, downloads: m.downloads + 1 } : m));
+    setTimeout(async () => {
+      // Firebase'de sayacı artır (gerçek zamanlı senkronizasyon)
+      try {
+        const dlRef = ref(db, "downloads/" + String(mod.id));
+        const snap = await get(dlRef);
+        const current = snap.val() || mod.downloads;
+        await set(dlRef, current + 1);
+      } catch(e) {
+        // Firebase çalışmazsa local artır
+        setMods(prev => prev.map(m => m.id === mod.id ? { ...m, downloads: m.downloads + 1 } : m));
+      }
 
       if (mod.fileData) {
         // Admin gerçek dosya yüklediyse: blob oluştur ve indir
@@ -809,4 +832,3 @@ export default function App() {
     </div>
   );
 }
-
